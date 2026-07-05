@@ -2,128 +2,79 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Настоящая Монополия Онлайн с Анимациями</title>
+    <title>3D Монополия Next-Gen</title>
     <style>
-        body { font-family: 'Arial', sans-serif; background: #1e272e; color: white; margin: 0; padding: 20px; display: flex; justify-content: space-around; overflow-x: hidden; }
-        #game-container { display: flex; flex-direction: column; align-items: center; }
+        body { margin: 0; overflow: hidden; background-color: #0b0f19; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
-        /* Сетка поля 11х11 элементов */
-        #board { 
-            display: grid; 
-            grid-template-columns: repeat(11, 75px); 
-            grid-template-rows: repeat(11, 75px); 
-            gap: 2px; 
-            background: #151a1e; 
-            padding: 5px;
-            border-radius: 8px;
-            position: relative;
+        /* Кинематографичный интерфейс поверх 3D сцены */
+        #ui-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: flex; justify-content: space-between; padding: 25px; box-sizing: border-box;
         }
-        .cell { 
-            background: #f1f2f6; color: #2f3542; font-size: 9px; font-weight: bold;
-            display: flex; flex-direction: column; justify-content: space-between; 
-            padding: 4px; box-sizing: border-box; text-align: center; border-radius: 3px;
-            position: relative; transition: all 0.3s ease;
+        .glass-panel {
+            background: rgba(15, 22, 36, 0.7); backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;
+            padding: 20px; color: white; pointer-events: auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
         }
-        .center-space { grid-column: 2 / 11; grid-row: 2 / 11; background: #dfe4ea; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #2f3542; position: relative; overflow: hidden;}
+        #left-panel { width: 280px; display: flex; flex-direction: column; gap: 15px; height: fit-content; }
+        #right-panel { width: 320px; display: flex; flex-direction: column; gap: 15px; height: 85vh; }
         
-        /* Цвета групп */
-        .brown { border-top: 5px solid #8B4513; }
-        .light-blue { border-top: 5px solid #87CEEB; }
-        .pink { border-top: 5px solid #FF69B4; }
-        .orange { border-top: 5px solid #FFA500; }
-        .red { border-top: 5px solid #FF0000; }
-        .yellow { border-top: 5px solid #FFFF00; }
-        .green { border-top: 5px solid #008000; }
-        .dark-blue { border-top: 5px solid #00008B; }
-
-        /* Плавные Фишки Игроков */
-        .token { 
-            width: 14px; 
-            height: 14px; 
-            border-radius: 50%; 
-            border: 2px solid white; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            position: absolute;
-            z-index: 10;
-            transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1); /* Плавный пошаговый ход */
-        }
-
-        .owner-tag { font-size: 8px; font-style: italic; color: #7f8c8d; }
-
-        /* Боковая панель UI */
-        #ui-panel { width: 320px; background: #2f3542; padding: 20px; border-radius: 8px; z-index: 5; }
-        button { width: 100%; padding: 12px; margin: 8px 0; font-size: 14px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: transform 0.1s; }
-        button:active { transform: scale(0.98); }
-        .btn-roll { background: #2ed573; color: white; }
-        .btn-buy { background: #1e90ff; color: white; }
-        #log { background: #1e272e; height: 180px; overflow-y: scroll; padding: 10px; font-size: 12px; border-radius: 4px; border: 1px solid #57606f; }
-
-        /* --- АНИМАЦИИ И МОДАЛЬНЫЕ ОКНА --- */
+        input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); padding: 10px; color: white; border-radius: 8px; width: 90%; }
+        button { background: linear-gradient(135deg, #ff4757, #ff6b81); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4); }
+        button:disabled { background: #57606f; cursor: not-allowed; transform: none; box-shadow: none; }
         
-        /* Всплывающее окно предложения покупки недвижимости */
+        #log { flex-grow: 1; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px; overflow-y: auto; font-size: 12px; border: 1px solid rgba(255,255,255,0.05); }
+        
+        /* Окно покупки в стиле карточек собственности */
         .modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.8); z-index: 100; justify-content: center; align-items: center;
         }
-        .modal-content {
-            background: white; color: black; padding: 20px; border-radius: 10px; width: 260px;
-            text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            animation: popUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        .card-popup {
+            background: #f1f2f6; color: #2f3542; padding: 25px; border-radius: 16px; width: 280px; text-align: center;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8); animation: cardIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .card-header { padding: 10px; color: white; font-weight: bold; text-transform: uppercase; border-radius: 5px 5px 0 0; margin: -20px -20px 15px -20px; }
-
-        /* Анимация вытаскивания карты Шанса */
-        .chance-card-animate {
-            position: absolute; width: 150px; height: 90px; background: #e67e22; color: white;
-            border: 3px solid white; border-radius: 8px; padding: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-            display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 12px; text-align: center;
-            top: -200px; left: calc(50% - 75px);
-            transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            z-index: 50;
-        }
-        .chance-card-animate.active { top: calc(50% - 45px); transform: rotate(360deg); }
-
-        @keyframes popUp {
-            from { transform: scale(0.7); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
+        .card-banner { height: 40px; margin: -25px -25px 20px -25px; border-radius: 16px 16px 0 0; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        
+        @keyframes cardIn { from { transform: scale(0.6) translateY(50px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
     </style>
+    <!-- Библиотека 3D графики -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
+    <!-- Модалка покупки недвижимости -->
     <div id="buyModal" class="modal">
-        <div class="modal-content">
-            <div id="modalHeader" class="card-header">ДОКУМЕНТ НА ПРАВО СОБСТВЕННОСТИ</div>
-            <h3 id="modalTitle">Улица</h3>
-            <p id="modalPrice">Цена: $---</p>
-            <p style="font-size: 11px; color: #7f8c8d;">Вы хотите приобрести этот участок?</p>
-            <button class="btn-buy" onclick="confirmBuy()">Купить 🏠</button>
-            <button style="background:#747d8c; color:white;" onclick="closeModal()">Пропустить</button>
+        <div class="card-popup">
+            <div id="modalBanner" class="card-banner">ДОКУМЕНТ НА СОБСТВЕННОСТЬ</div>
+            <h2 id="modalTitle" style="margin:10px 0;">Улица</h2>
+            <p id="modalPrice" style="font-size:18px; font-weight:bold; color:#2ed573;">$---</p>
+            <p style="font-size:12px; color:#7f8c8d; margin-bottom:20px;">Хотите приобрести этот актив в свой портфель?</p>
+            <button style="background:#2ed573; width:100%; margin-bottom:8px;" onclick="confirmBuy()">Купить актив</button>
+            <button style="background:#a4b0be; width:100%;" onclick="closeModal()">Аукцион / Отказ</button>
         </div>
     </div>
 
-    <div id="game-container">
-        <div id="board">
-            <div class="center-space">
-                <h1 style="margin: 0; letter-spacing: 4px; color: #e74c3c; font-size: 42px;">MONOPOLY</h1>
-                <div id="chanceCardAnim" class="chance-card-animate">ШАНС</div>
-            </div>
-            <div id="dynamic-tokens"></div>
+    <div id="ui-container">
+        <!-- Левая панель: Логин и управление игроком -->
+        <div class="glass-panel" id="left-panel">
+            <h2 style="margin:0; font-size:20px; letter-spacing:1px; color:#2ed573;">MONOPOLY 3D</h2>
+            <input type="text" id="nameInput" placeholder="Введите ваш никнейм">
+            <button onclick="joinGame()" style="background: linear-gradient(135deg, #2ed573, #1e90ff);">Подключиться к сессии</button>
+            <hr style="width:100%; border:0; border-top:1px solid rgba(255,255,255,0.1);">
+            <button id="rollBtn" onclick="rollDice()" disabled style="font-size:16px;">БРОСИТЬ КУБИКИ 🎲🎲</button>
         </div>
-    </div>
 
-    <div id="ui-panel">
-        <h2>Управление</h2>
-        <input type="text" id="nameInput" placeholder="Имя игрока" style="width:92%; padding:8px; margin-bottom:10px; border-radius:4px; border:none;">
-        <button onclick="joinGame()" style="background:#ffa502; color:white;">Подключиться</button>
-        <hr style="border-color: #57606f;">
-        <button class="btn-roll" id="rollBtn" onclick="rollDice()" disabled>Бросить кубики 🎲🎲</button>
-        
-        <h3>Игроки:</h3>
-        <ul id="playersList" style="padding-left:15px; margin: 5px 0;"></ul>
-
-        <h3>События игры:</h3>
-        <div id="log"></div>
+        <!-- Правая панель: Статистика и Логи -->
+        <div class="glass-panel" id="right-panel">
+            <h3 style="margin:0;">Активные инвесторы:</h3>
+            <div id="playersList" style="display:flex; flex-direction:column; gap:8px;"></div>
+            
+            <h3 style="margin:10px 0 0 0;">История ходов:</h3>
+            <div id="log"></div>
+        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -132,155 +83,214 @@
         const socket = io();
         let myId = null;
         let localPlayers = {};
+        let tokenMeshes = {}; // Хранилище 3D-моделей фишек игроков
+        let cellMeshes = [];  // Хранилище 3D-моделей ячеек поля
 
-        // Маппинг 40 клеток на сетку 11х11 по периметру
-        const gridPositions = [
-            {r:11, c:11}, {r:11, c:10}, {r:11, c:9}, {r:11, c:8}, {r:11, c:7}, {r:11, c:6}, {r:11, c:5}, {r:11, c:4}, {r:11, c:3}, {r:11, c:2},
-            {r:11, c:1},  {r:10, c:1},  {r:9, c:1},  {r:8, c:1},  {r:7, c:1},  {r:6, c:1},  {r:5, c:1},  {r:4, c:1},  {r:3, c:1},  {r:2, c:1},
-            {r:1, c:1},   {r:1, c:2},   {r:1, c:3},  {r:1, c:4},  {r:1, c:5},  {r:1, c:6},  {r:1, c:7},  {r:1, c:8},  {r:1, c:9},  {r:1, c:10},
-            {r:1, c:11},  {r:2, c:11},  {r:3, c:11}, {r:4, c:11}, {r:5, c:11}, {r:6, c:11}, {r:7, c:11}, {r:8, c:11}, {r:9, c:11}, {r:10, c:11}
-        ];
+        // Настройка 3D пространства
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0f1d);
+        scene.fog = new THREE.FogExp2(0x0a0f1d, 0.012); // Мягкая туманная дымка на горизонте
 
-        // Рендер полей карты
-        const board = document.getElementById('board');
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Красивые мягкие тени
+        document.body.appendChild(renderer.domElement);
+
+        // Кинематографичный свет
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+        scene.add(ambientLight);
+
+        const warmLight = new THREE.SpotLight(0xff9f43, 1.5, 100, Math.PI / 4, 0.5, 1);
+        warmLight.position.set(0, 35, 10);
+        warmLight.castShadow = true;
+        scene.add(warmLight);
+
+        const coolLight = new THREE.DirectionalLight(0x00d2d3, 0.4);
+        coolLight.position.set(-20, 20, -20);
+        scene.add(coolLight);
+
+        // Генерация полноценного 3D-стола и полей (40 штук по периметру 11х11)
+        const boardGroup = new THREE.Group();
+        scene.add(boardGroup);
+
+        // Маппинг индексов в 3D координаты (X, Z)
+        function get3DCoordinates(index) {
+            let x = 0, z = 0;
+            const step = 3.2; // Расстояние между центрами 3D-карточек
+            if (index >= 0 && index <= 10) { x = 5 - index; z = 5; }
+            else if (index > 10 && index <= 20) { x = -5; z = 5 - (index - 10); }
+            else if (index > 20 && index <= 30) { x = -5 + (index - 20); z = -5; }
+            else if (index > 30 && index < 40) { x = 5; z = -5 + (index - 30); }
+            return { x: x * step, z: z * step };
+        }
+
+        const groupColors = { 'brown':0x8B4513, 'light-blue':0x87CEEB, 'pink':0xFF69B4, 'orange':0xFFA500, 'red':0xFF0000, 'yellow':0xFFFF00, 'green':0x008000, 'dark-blue':0x00008B };
+
         BOARD_DATA.forEach((cell, idx) => {
-            const cellDiv = document.createElement('div');
-            cellDiv.className = `cell ${cell.group || ''}`;
-            cellDiv.style.gridRow = gridPositions[idx].r;
-            cellDiv.style.gridColumn = gridPositions[idx].c;
-            cellDiv.id = `cell-${idx}`;
+            const pos = get3DCoordinates(idx);
+            const isCorner = idx % 10 === 0;
             
-            cellDiv.innerHTML = `
-                <div style="font-size:8px; line-height:10px;">${cell.name}</div>
-                <div class="owner-tag" id="owner-${idx}"></div>
-                <div style="color:#27ae60; font-size:9px;">${cell.price ? '$'+cell.price : ''}</div>
-            `;
-            board.appendChild(cellDiv);
+            // Размер блока: угловые больше, обычные вытянутые
+            const w = isCorner ? 4 : 3;
+            const d = isCorner ? 4 : 3;
+
+            // Тело ячейки поля
+            const geo = new THREE.BoxGeometry(w, 0.8, d);
+            const mat = new THREE.MeshStandardMaterial({ color: 0xf5f6fa, roughness: 0.2 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(pos.x, 0, pos.z);
+            mesh.receiveShadow = true;
+            mesh.castShadow = true;
+            boardGroup.add(mesh);
+            cellMeshes[idx] = mesh;
+
+            // Если у ячейки есть цветовая группа, достраиваем 3D-полосу цвета владельца
+            if (cell.group) {
+                const stripGeo = new THREE.BoxGeometry(w, 0.2, 0.6);
+                const stripMat = new THREE.MeshStandardMaterial({ color: groupColors[cell.group], roughness: 0.1 });
+                const stripMesh = new THREE.Mesh(stripGeo, stripMat);
+                stripMesh.position.set(pos.x, 0.41, pos.z + (d/2 - 0.3));
+                boardGroup.add(stripMesh);
+            }
         });
 
-        socket.on('connect', () => { myId = socket.id; });
+        // Центральное сукно игрового стола
+        const centerGeo = new THREE.BoxGeometry(28, 0.6, 28);
+        const centerMat = new THREE.MeshStandardMaterial({ color: 0xdfe4ea, roughness: 0.6 });
+        const centerMesh = new THREE.Mesh(centerGeo, centerMat);
+        centerMesh.position.set(0, -0.1, 0);
+        centerMesh.receiveShadow = true;
+        boardGroup.add(centerMesh);
 
-        function joinGame() {
-            socket.emit('joinGame', document.getElementById('nameInput').value);
-        }
-        function rollDice() { socket.emit('rollDice'); }
-        
-        function closeModal() { document.getElementById('buyModal').style.display = 'none'; }
-        function confirmBuy() {
-            socket.emit('buyProperty');
-            closeModal();
-        }
+        // Позиция камеры как в ААА-стратегиях
+        camera.position.set(0, 28, 30);
+        camera.lookAt(0, -1, 2);
 
-        // Логика пошаговой анимации движения фишки ячейка за ячейкой
-        function moveTokenSmoothly(playerId, fromPos, toPos, color) {
-            let token = document.getElementById(`token-${playerId}`);
-            if (!token) {
-                token = document.createElement('div');
-                token.className = 'token';
-                token.id = `token-${playerId}`;
-                token.style.backgroundColor = color;
-                document.getElementById('dynamic-tokens').appendChild(token);
-            }
-
-            let currentPos = fromPos;
+        // Главный цикл рендеринга графики
+        function animate() {
+            requestAnimationFrame(animate);
+            // Медленный кинематографичный облет камеры вокруг стола для живой картинки
+            const time = Date.now() * 0.0001;
+            camera.position.x = Math.sin(time * 0.3) * 2 + 0;
             
+            // Плавное покачивание фишек (эффект парения/дыхания)
+            Object.values(tokenMeshes).forEach((mesh, index) => {
+                mesh.position.y = 1.0 + Math.sin(Date.now() * 0.005 + index) * 0.1;
+                mesh.rotation.y += 0.01;
+            });
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Логика сети
+        socket.on('connect', () => { myId = socket.id; });
+        function joinGame() { socket.emit('joinGame', document.getElementById('nameInput').value); }
+        function rollDice() { socket.emit('rollDice'); }
+        function closeModal() { document.getElementById('buyModal').style.display = 'none'; }
+        function confirmBuy() { socket.emit('buyProperty'); closeModal(); }
+
+        // Плавная 3D интерполяция (анимация полета фишки)
+        function animateTokenFlight(mesh, targetX, targetZ) {
+            const startX = mesh.position.x;
+            const startZ = mesh.position.z;
+            let progress = 0;
+
             function step() {
-                if (currentPos === toPos) {
-                    // Прибыли! Проверяем, наш ли ход и нужно ли показать карточку покупки
-                    if (playerId === myId) {
-                        checkLandingMechanics(toPos);
-                    }
+                progress += 0.04; // Скорость полета фишки
+                if (progress >= 1) {
+                    mesh.position.set(targetX, 1, targetZ);
                     return;
                 }
-                currentPos = (currentPos + 1) % 40;
+                // Параболическая траектория (фишка подпрыгивает при движении)
+                mesh.position.x = startX + (targetX - startX) * progress;
+                mesh.position.z = startZ + (targetZ - startZ) * progress;
+                mesh.position.y = 1 + Math.sin(progress * Math.PI) * 3; // Высота прыжка = 3 единицы
                 
-                // Рассчитываем координаты центра ячейки на экране
-                const cellEl = document.getElementById(`cell-${currentPos}`);
-                const offsetShift = Object.keys(localPlayers).indexOf(playerId) * 4; // Смещение фишек, чтобы не слипались
-                
-                token.style.left = `${cellEl.offsetLeft + 15 + offsetShift}px`;
-                token.style.top = `${cellEl.offsetTop + 35}px`;
-
-                setTimeout(step, 220); // Скорость перешагивания ячеек
+                requestAnimationFrame(step);
             }
             step();
         }
 
-        function checkLandingMechanics(pos) {
-            const cell = BOARD_DATA[pos];
-            // Анимация карт Шанса / Казны
-            if (cell.type === 'chance' || cell.type === 'chest') {
-                const cardAnim = document.getElementById('chanceCardAnim');
-                cardAnim.innerText = cell.type === 'chance' ? '🎲 ШАНС: Отправьтесь на СТАРТ!' : '📜 КАЗНА: Налог на доходы!';
-                cardAnim.style.background = cell.type === 'chance' ? '#e67e22' : '#9b59b6';
-                cardAnim.classList.add('active');
-                setTimeout(() => cardAnim.classList.remove('active'), 3500);
-            }
-
-            // Появление карточки собственности для покупки
-            if (['property', 'railroad', 'utility'].includes(cell.type)) {
-                socket.once('updateGameState', (state) => {
-                    const hasOwner = state.cellsOwner[pos];
-                    if (!hasOwner && state.players[myId].money >= cell.price) {
-                        const colors = { 'brown':'#8B4513', 'light-blue':'#87CEEB', 'pink':'#FF69B4', 'orange':'#FFA500', 'red':'#FF0000', 'yellow':'#FFFF00', 'green':'#008000', 'dark-blue':'#00008B' };
-                        document.getElementById('modalHeader').style.backgroundColor = colors[cell.group] || '#34495e';
-                        document.getElementById('modalTitle').innerText = cell.name;
-                        document.getElementById('modalPrice').innerText = `Стоимость: $${cell.price}`;
-                        document.getElementById('buyModal').style.display = 'flex';
-                    }
-                });
-            }
-        }
-
         socket.on('updateGameState', ({ players, currentTurn, cellsOwner }) => {
             localPlayers = players;
+            
+            // Обновляем список инвесторов в панели UI
+            const list = document.getElementById('playersList');
+            list.innerHTML = '';
 
-            // Обновление владельцев
-            document.querySelectorAll('.owner-tag').forEach(el => el.innerText = '');
+            // Перекрашиваем 3D блоки, если у них сменился владелец
             Object.keys(cellsOwner).forEach(cellId => {
                 const owner = players[cellsOwner[cellId]];
-                if (owner) {
-                    const tag = document.getElementById(`owner-${cellId}`);
-                    tag.innerText = `[${owner.name}]`;
-                    tag.style.color = owner.color;
+                if (owner && cellMeshes[cellId]) {
+                    // Окрашиваем ребро ячейки в цвет купившего его игрока
+                    cellMeshes[cellId].material.color.set(owner.color);
                 }
             });
 
-            // Обновление UI списка игроков
-            const pList = document.getElementById('playersList');
-            pList.innerHTML = '';
-            
-            Object.values(players).forEach(p => {
-                const li = document.createElement('li');
-                li.style.color = p.color;
-                li.innerHTML = `<b>${p.name}</b>: $${p.money} ${p.inJail ? '🔒' : ''}`;
-                if (p.id === currentTurn) li.innerHTML += ' 🎲';
-                pList.appendChild(li);
-
-                // Если фишки еще нет на поле, ставим её на стартовую позицию без анимации
-                const tEl = document.getElementById(`token-${p.id}`);
-                if (!tEl) {
-                    moveTokenSmoothly(p.id, p.position, p.position, p.color);
+            Object.values(players).forEach((p, idx) => {
+                const pos3d = get3DCoordinates(p.position);
+                
+                // Если 3D фишки игрока еще нет на сцене — создаем её (фигурный конус)
+                if (!tokenMeshes[p.id]) {
+                    const tokenGeo = new THREE.ConeGeometry(0.6, 1.6, 16);
+                    const tokenMat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.1, metalness: 0.5 });
+                    const tokenMesh = new THREE.Mesh(tokenGeo, tokenMat);
+                    tokenMesh.position.set(pos3d.x, 1, pos3d.z);
+                    tokenMesh.castShadow = true;
+                    scene.add(tokenMesh);
+                    tokenMeshes[p.id] = tokenMesh;
                 }
+
+                // Отрисовка карточки инвестора в UI
+                const card = document.createElement('div');
+                card.style.borderLeft = `5px solid ${p.color}`;
+                card.style.padding = '8px';
+                card.style.background = 'rgba(255,255,255,0.05)';
+                card.style.borderRadius = '4px';
+                card.innerHTML = `<b>${p.name}</b> <span style="float:right; color:#2ed573;">$${p.money}</span>`;
+                if (p.id === currentTurn) card.style.boxShadow = `0 0 10px ${p.color}`;
+                list.appendChild(card);
             });
 
             document.getElementById('rollBtn').disabled = (myId !== currentTurn);
         });
 
-        // Слушаем кубики, чтобы запустить красивую пошаговую анимацию перемещения
+        // Слушаем бросок кубиков от сервера для запуска триггера анимации прыжка фишки
         socket.on('diceRolled', ({ playerId, dice, newPosition }) => {
-            const player = localPlayers[playerId];
-            if (player) {
-                // Высчитываем старую позицию до шага
-                const oldPosition = (newPosition - dice + 40) % 40;
-                moveTokenSmoothly(playerId, oldPosition, newPosition, player.color);
+            const mesh = tokenMeshes[playerId];
+            if (mesh) {
+                const pos3d = get3DCoordinates(newPosition);
+                // Запускаем красивый прыжок по параболе до новой ячейки
+                animateTokenFlight(mesh, pos3d.x, pos3d.z);
+
+                // Если ход наш, выкатываем предложение о покупке после приземления фишки
+                if (playerId === myId) {
+                    setTimeout(() => {
+                        const cell = BOARD_DATA[newPosition];
+                        if (['property', 'railroad', 'utility'].includes(cell.type) && !localPlayers[myId].inJail) {
+                            document.getElementById('modalBanner').style.backgroundColor = groupColors[cell.group] || '#1e90ff';
+                            document.getElementById('modalTitle').innerText = cell.name;
+                            document.getElementById('modalPrice').innerText = `$${cell.price}`;
+                            document.getElementById('buyModal').style.display = 'flex';
+                        }
+                    }, 800);
+                }
             }
         });
 
         socket.on('gameLog', (msg) => {
             const log = document.getElementById('log');
-            log.innerHTML += `<div>${msg}</div>`;
+            log.innerHTML += `<div style="margin-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.02); padding-bottom:4px;">${msg}</div>`;
             log.scrollTop = log.scrollHeight;
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         });
     </script>
 </body>
