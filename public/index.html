@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Мини Монополия Онлайн</title>
+    <style>
+        body { font-family: sans-serif; background: #2c3e50; color: white; text-align: center; }
+        #board { display: grid; grid-template-columns: repeat(5, 80px); grid-template-rows: repeat(5, 80px); gap: 5px; justify-content: center; margin: 20px auto; }
+        .cell { background: #ecf0f1; color: #2c3e50; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; border-radius: 5px; position: relative; }
+        .cell-0 { background: #f1c40f; } /* Старт */
+        #controls { margin-top: 20px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #27ae60; color: white; border: none; border-radius: 5px; }
+        button:disabled { background: #7f8c8d; }
+        .token { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin: 2px; border: 1px solid #000; }
+        #player-list { list-style: none; padding: 0; max-width: 300px; margin: 20px auto; text-align: left; }
+    </style>
+</head>
+<body>
+
+    <h1>Мини-Монополия</h1>
+    <div id="controls">
+        <input type="text" id="nameInput" placeholder="Ваше имя">
+        <button id="joinBtn" onclick="joinGame()">Войти в игру</button>
+        <button id="rollBtn" onclick="rollDice()" disabled>Бросить кубик</button>
+    </div>
+    <p id="status">Подключитесь к игре...</p>
+
+    <!-- Игровое поле 4х4 по периметру (16 клеток) -->
+    <div id="board">
+        <!-- Клетки генерируются скриптом -->
+    </div>
+
+    <h3>Игроки:</h3>
+    <ul id="player-list"></ul>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let myId = null;
+
+        // Генерация карты по периметру 5х5 (16 внешних клеток)
+        const boardLayout = [
+            0,  1,  2,  3,  4,
+            15, null, null, null, 5,
+            14, null, null, null, 6,
+            13, null, null, null, 7,
+            12, 11, 10, 9,  8
+        ];
+
+        const boardDiv = document.getElementById('board');
+        boardLayout.forEach((cellIndex, i) => {
+            const cell = document.createElement('div');
+            if (cellIndex !== null) {
+                cell.className = `cell cell-${cellIndex}`;
+                cell.id = `cell-${cellIndex}`;
+                cell.innerHTML = `<div>${cellIndex === 0 ? 'СТАРТ' : 'Клетка ' + cellIndex}</div><div class="tokens"></div>`;
+            } else {
+                cell.style.visibility = 'hidden';
+            }
+            boardDiv.appendChild(cell);
+        });
+
+        socket.on('connect', () => { myId = socket.id; });
+
+        function joinGame() {
+            const name = document.getElementById('nameInput').value;
+            socket.emit('joinGame', name);
+            document.getElementById('joinBtn').disabled = true;
+            document.getElementById('nameInput').disabled = true;
+        }
+
+        function rollDice() {
+            socket.emit('rollDice');
+        }
+
+        socket.on('updateGameState', ({ players, currentTurn }) => {
+            // Очищаем фишки
+            document.querySelectorAll('.tokens').forEach(el => el.innerHTML = '');
+            
+            const list = document.getElementById('player-list');
+            list.innerHTML = '';
+
+            // Обновляем список игроков и их позиции
+            Object.values(players).forEach(p => {
+                // Добавляем фишку на поле
+                const cellTokens = document.querySelector(`#cell-${p.position} .tokens`);
+                if (cellTokens) {
+                    const token = document.createElement('span');
+                    token.className = 'token';
+                    token.style.backgroundColor = p.color;
+                    token.title = p.name;
+                    cellTokens.appendChild(token);
+                }
+
+                // В список игроков
+                const li = document.createElement('li');
+                li.style.color = p.color;
+                li.innerHTML = `● <b>${p.name}</b> — Баланс: $${p.money} (Клетка ${p.position})`;
+                if (p.id === currentTurn) li.innerHTML += ' <b>(ХОДИТ)</b>';
+                list.appendChild(li);
+            });
+
+            // Кнопка броска активна только в свой ход
+            const isMyTurn = (myId === currentTurn);
+            document.getElementById('rollBtn').disabled = !isMyTurn;
+            document.getElementById('status').innerText = isMyTurn ? "Ваш ход!" : "Ожидание хода соперника...";
+        });
+
+        socket.on('diceRolled', ({ playerId, dice }) => {
+            alert(`Игрок выбросил кубик: ${dice}`);
+        });
+    </script>
+</body>
+</html>
