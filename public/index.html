@@ -2,112 +2,176 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Мини Монополия Онлайн</title>
+    <title>Настоящая Монополия Онлайн</title>
     <style>
-        body { font-family: sans-serif; background: #2c3e50; color: white; text-align: center; }
-        #board { display: grid; grid-template-columns: repeat(5, 80px); grid-template-rows: repeat(5, 80px); gap: 5px; justify-content: center; margin: 20px auto; }
-        .cell { background: #ecf0f1; color: #2c3e50; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; border-radius: 5px; position: relative; }
-        .cell-0 { background: #f1c40f; } /* Старт */
-        #controls { margin-top: 20px; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #27ae60; color: white; border: none; border-radius: 5px; }
-        button:disabled { background: #7f8c8d; }
-        .token { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin: 2px; border: 1px solid #000; }
-        #player-list { list-style: none; padding: 0; max-width: 300px; margin: 20px auto; text-align: left; }
+        body { font-family: 'Arial', sans-serif; background: #1e272e; color: white; margin: 0; padding: 20px; display: flex; justify-content: space-around; }
+        #game-container { display: flex; flex-direction: column; align-items: center; }
+        
+        /* Сетка поля 11х11 элементов */
+        #board { 
+            display: grid; 
+            grid-template-columns: repeat(11, 75px); 
+            grid-template-rows: repeat(11, 75px); 
+            gap: 2px; 
+            background: #151a1e; 
+            padding: 5px;
+            border-radius: 8px;
+        }
+        .cell { 
+            background: #f1f2f6; color: #2f3542; font-size: 9px; font-weight: bold;
+            display: flex; flex-direction: column; justify-content: space-between; 
+            padding: 4px; box-sizing: border-box; text-align: center; border-radius: 3px;
+            position: relative;
+        }
+        .center-space { grid-column: 2 / 11; grid-row: 2 / 11; background: #dfe4ea; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #2f3542;}
+        
+        /* Цвета групп */
+        .brown { border-top: 5px solid #8B4513; }
+        .light-blue { border-top: 5px solid #87CEEB; }
+        .pink { border-top: 5px solid #FF69B4; }
+        .orange { border-top: 5px solid #FFA500; }
+        .red { border-top: 5px solid #FF0000; }
+        .yellow { border-top: 5px solid #FFFF00; }
+        .green { border-top: 5px solid #008000; }
+        .dark-blue { border-top: 5px solid #00008B; }
+
+        /* Фишки */
+        .tokens-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; }
+        .token { width: 12px; height: 12px; border-radius: 50%; border: 1px solid black; }
+        .owner-tag { font-size: 8px; font-style: italic; color: #7f8c8d; }
+
+        /* Боковая панель UI */
+        #ui-panel { width: 320px; background: #2f3542; padding: 20px; border-radius: 8px; }
+        button { width: 100%; padding: 12px; margin: 8px 0; font-size: 14px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-roll { background: #2ed573; color: white; }
+        .btn-buy { background: #1e90ff; color: white; }
+        #log { background: #1e272e; height: 200px; overflow-y: scroll; padding: 10px; font-size: 12px; border-radius: 4px; border: 1px solid #57606f; }
     </style>
 </head>
 <body>
 
-    <h1>Мини-Монополия</h1>
-    <div id="controls">
-        <input type="text" id="nameInput" placeholder="Ваше имя">
-        <button id="joinBtn" onclick="joinGame()">Войти в игру</button>
-        <button id="rollBtn" onclick="rollDice()" disabled>Бросить кубик</button>
-    </div>
-    <p id="status">Подключитесь к игре...</p>
-
-    <!-- Игровое поле 4х4 по периметру (16 клеток) -->
-    <div id="board">
-        <!-- Клетки генерируются скриптом -->
+    <div id="game-container">
+        <div id="board">
+            <!-- Центр поля -->
+            <div class="center-space">
+                <h1 style="margin: 0; letter-spacing: 4px; color: #e74c3c;">MONOPOLY</h1>
+                <p style="font-size: 12px; color: #7f8c8d;">Сетевой Движок v1.0</p>
+            </div>
+        </div>
     </div>
 
-    <h3>Игроки:</h3>
-    <ul id="player-list"></ul>
+    <div id="ui-panel">
+        <h2>Управление</h2>
+        <input type="text" id="nameInput" placeholder="Имя игрока" style="width:90%; padding:8px; margin-bottom:10px;">
+        <button onclick="joinGame()" style="background:#ffa502;">Подключиться</button>
+        <hr>
+        <button class="btn-roll" id="rollBtn" onclick="rollDice()" disabled>Бросить кубики 🎲🎲</button>
+        <button class="btn-buy" id="buyBtn" onclick="buyProperty()" disabled>Купить недвижимость 🏠</button>
+        
+        <h3>Игроки:</h3>
+        <ul id="playersList" style="padding-left:15px;"></ul>
+
+        <h3>События игры:</h3>
+        <div id="log"></div>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/boardData.js"></script>
     <script>
         const socket = io();
         let myId = null;
+        let currentGameState = {};
 
-        // Генерация карты по периметру 5х5 (16 внешних клеток)
-        const boardLayout = [
-            0,  1,  2,  3,  4,
-            15, null, null, null, 5,
-            14, null, null, null, 6,
-            13, null, null, null, 7,
-            12, 11, 10, 9,  8
+        // Маппинг 40 клеток на сетку 11х11 по периметру
+        const gridPositions = [
+            {r:11, c:11}, {r:11, c:10}, {r:11, c:9}, {r:11, c:8}, {r:11, c:7}, {r:11, c:6}, {r:11, c:5}, {r:11, c:4}, {r:11, c:3}, {r:11, c:2},
+            {r:11, c:1},  {r:10, c:1},  {r:9, c:1},  {r:8, c:1},  {r:7, c:1},  {r:6, c:1},  {r:5, c:1},  {r:4, c:1},  {r:3, c:1},  {r:2, c:1},
+            {r:1, c:1},   {r:1, c:2},   {r:1, c:3},  {r:1, c:4},  {r:1, c:5},  {r:1, c:6},  {r:1, c:7},  {r:1, c:8},  {r:1, c:9},  {r:1, c:10},
+            {r:1, c:11},  {r:2, c:11},  {r:3, c:11}, {r:4, c:11}, {r:5, c:11}, {r:6, c:11}, {r:7, c:11}, {r:8, c:11}, {r:9, c:11}, {r:10, c:11}
         ];
 
-        const boardDiv = document.getElementById('board');
-        boardLayout.forEach((cellIndex, i) => {
-            const cell = document.createElement('div');
-            if (cellIndex !== null) {
-                cell.className = `cell cell-${cellIndex}`;
-                cell.id = `cell-${cellIndex}`;
-                cell.innerHTML = `<div>${cellIndex === 0 ? 'СТАРТ' : 'Клетка ' + cellIndex}</div><div class="tokens"></div>`;
-            } else {
-                cell.style.visibility = 'hidden';
-            }
-            boardDiv.appendChild(cell);
+        // Рендер полей
+        const board = document.getElementById('board');
+        BOARD_DATA.forEach((cell, idx) => {
+            const cellDiv = document.createElement('div');
+            cellDiv.className = `cell ${cell.group || ''}`;
+            cellDiv.style.gridRow = gridPositions[idx].r;
+            cellDiv.style.gridColumn = gridPositions[idx].c;
+            cellDiv.id = `cell-${idx}`;
+            
+            cellDiv.innerHTML = `
+                <div style="font-size:8px;">${cell.name}</div>
+                <div class="owner-tag" id="owner-${idx}"></div>
+                <div style="color:#27ae60;">${cell.price ? '$'+cell.price : ''}</div>
+                <div class="tokens-container" id="tokens-${idx}"></div>
+            `;
+            board.appendChild(cellDiv);
         });
 
         socket.on('connect', () => { myId = socket.id; });
 
         function joinGame() {
-            const name = document.getElementById('nameInput').value;
-            socket.emit('joinGame', name);
-            document.getElementById('joinBtn').disabled = true;
-            document.getElementById('nameInput').disabled = true;
+            socket.emit('joinGame', document.getElementById('nameInput').value);
         }
+        function rollDice() { socket.emit('rollDice'); }
+        function buyProperty() { socket.emit('buyProperty'); }
 
-        function rollDice() {
-            socket.emit('rollDice');
-        }
-
-        socket.on('updateGameState', ({ players, currentTurn }) => {
-            // Очищаем фишки
-            document.querySelectorAll('.tokens').forEach(el => el.innerHTML = '');
+        socket.on('updateGameState', ({ players, currentTurn, cellsOwner, cellsHouses }) => {
+            currentGameState = { players, currentTurn, cellsOwner };
             
-            const list = document.getElementById('player-list');
-            list.innerHTML = '';
+            // Очистка фишек и владельцев
+            document.querySelectorAll('.tokens-container').forEach(el => el.innerHTML = '');
+            document.querySelectorAll('.owner-tag').forEach(el => el.innerText = '');
 
-            // Обновляем список игроков и их позиции
-            Object.values(players).forEach(p => {
-                // Добавляем фишку на поле
-                const cellTokens = document.querySelector(`#cell-${p.position} .tokens`);
-                if (cellTokens) {
-                    const token = document.createElement('span');
-                    token.className = 'token';
-                    token.style.backgroundColor = p.color;
-                    token.title = p.name;
-                    cellTokens.appendChild(token);
+            // Отрисовка владельцев клеток
+            Object.keys(cellsOwner).forEach(cellId => {
+                const owner = players[cellsOwner[cellId]];
+                if (owner) {
+                    document.getElementById(`owner-${cellId}`).innerText = owner.name;
+                    document.getElementById(`owner-${cellId}`).style.color = owner.color;
                 }
-
-                // В список игроков
-                const li = document.createElement('li');
-                li.style.color = p.color;
-                li.innerHTML = `● <b>${p.name}</b> — Баланс: $${p.money} (Клетка ${p.position})`;
-                if (p.id === currentTurn) li.innerHTML += ' <b>(ХОДИТ)</b>';
-                list.appendChild(li);
             });
 
-            // Кнопка броска активна только в свой ход
+            // Отрисовка фишек игроков и списка
+            const pList = document.getElementById('playersList');
+            pList.innerHTML = '';
+            
+            Object.values(players).forEach(p => {
+                const tokenContainer = document.getElementById(`tokens-${p.position}`);
+                if (tokenContainer) {
+                    const t = document.createElement('div');
+                    t.className = 'token';
+                    t.style.backgroundColor = p.color;
+                    tokenContainer.appendChild(t);
+                }
+
+                const li = document.createElement('li');
+                li.style.color = p.color;
+                li.innerHTML = `<b>${p.name}</b>: $${p.money} ${p.inJail ? '(В тюрьме)' : ''}`;
+                if (p.id === currentTurn) li.innerHTML += ' 🎲';
+                pList.appendChild(li);
+            });
+
+            // Кнопки управления
             const isMyTurn = (myId === currentTurn);
             document.getElementById('rollBtn').disabled = !isMyTurn;
-            document.getElementById('status').innerText = isMyTurn ? "Ваш ход!" : "Ожидание хода соперника...";
+            
+            // Проверка, можно ли купить текущую клетку
+            if (isMyTurn) {
+                const myPos = players[myId].position;
+                const curCell = BOARD_DATA[myPos];
+                const hasOwner = cellsOwner[myPos];
+                const buyable = ['property', 'railroad', 'utility'].includes(curCell.type);
+                document.getElementById('buyBtn').disabled = !(buyable && !hasOwner && players[myId].money >= curCell.price);
+            } else {
+                document.getElementById('buyBtn').disabled = true;
+            }
         });
 
-        socket.on('diceRolled', ({ playerId, dice }) => {
-            alert(`Игрок выбросил кубик: ${dice}`);
+        socket.on('gameLog', (msg) => {
+            const log = document.getElementById('log');
+            log.innerHTML += `<div>${msg}</div>`;
+            log.scrollTop = log.scrollHeight;
         });
     </script>
 </body>
