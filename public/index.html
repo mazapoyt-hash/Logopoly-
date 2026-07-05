@@ -2,9 +2,9 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Настоящая Монополия Онлайн</title>
+    <title>Настоящая Монополия Онлайн с Анимациями</title>
     <style>
-        body { font-family: 'Arial', sans-serif; background: #1e272e; color: white; margin: 0; padding: 20px; display: flex; justify-content: space-around; }
+        body { font-family: 'Arial', sans-serif; background: #1e272e; color: white; margin: 0; padding: 20px; display: flex; justify-content: space-around; overflow-x: hidden; }
         #game-container { display: flex; flex-direction: column; align-items: center; }
         
         /* Сетка поля 11х11 элементов */
@@ -16,14 +16,15 @@
             background: #151a1e; 
             padding: 5px;
             border-radius: 8px;
+            position: relative;
         }
         .cell { 
             background: #f1f2f6; color: #2f3542; font-size: 9px; font-weight: bold;
             display: flex; flex-direction: column; justify-content: space-between; 
             padding: 4px; box-sizing: border-box; text-align: center; border-radius: 3px;
-            position: relative;
+            position: relative; transition: all 0.3s ease;
         }
-        .center-space { grid-column: 2 / 11; grid-row: 2 / 11; background: #dfe4ea; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #2f3542;}
+        .center-space { grid-column: 2 / 11; grid-row: 2 / 11; background: #dfe4ea; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #2f3542; position: relative; overflow: hidden;}
         
         /* Цвета групп */
         .brown { border-top: 5px solid #8B4513; }
@@ -35,41 +36,91 @@
         .green { border-top: 5px solid #008000; }
         .dark-blue { border-top: 5px solid #00008B; }
 
-        /* Фишки */
-        .tokens-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; }
-        .token { width: 12px; height: 12px; border-radius: 50%; border: 1px solid black; }
+        /* Плавные Фишки Игроков */
+        .token { 
+            width: 14px; 
+            height: 14px; 
+            border-radius: 50%; 
+            border: 2px solid white; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            position: absolute;
+            z-index: 10;
+            transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1); /* Плавный пошаговый ход */
+        }
+
         .owner-tag { font-size: 8px; font-style: italic; color: #7f8c8d; }
 
         /* Боковая панель UI */
-        #ui-panel { width: 320px; background: #2f3542; padding: 20px; border-radius: 8px; }
-        button { width: 100%; padding: 12px; margin: 8px 0; font-size: 14px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #ui-panel { width: 320px; background: #2f3542; padding: 20px; border-radius: 8px; z-index: 5; }
+        button { width: 100%; padding: 12px; margin: 8px 0; font-size: 14px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: transform 0.1s; }
+        button:active { transform: scale(0.98); }
         .btn-roll { background: #2ed573; color: white; }
         .btn-buy { background: #1e90ff; color: white; }
-        #log { background: #1e272e; height: 200px; overflow-y: scroll; padding: 10px; font-size: 12px; border-radius: 4px; border: 1px solid #57606f; }
+        #log { background: #1e272e; height: 180px; overflow-y: scroll; padding: 10px; font-size: 12px; border-radius: 4px; border: 1px solid #57606f; }
+
+        /* --- АНИМАЦИИ И МОДАЛЬНЫЕ ОКНА --- */
+        
+        /* Всплывающее окно предложения покупки недвижимости */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: white; color: black; padding: 20px; border-radius: 10px; width: 260px;
+            text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            animation: popUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .card-header { padding: 10px; color: white; font-weight: bold; text-transform: uppercase; border-radius: 5px 5px 0 0; margin: -20px -20px 15px -20px; }
+
+        /* Анимация вытаскивания карты Шанса */
+        .chance-card-animate {
+            position: absolute; width: 150px; height: 90px; background: #e67e22; color: white;
+            border: 3px solid white; border-radius: 8px; padding: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 12px; text-align: center;
+            top: -200px; left: calc(50% - 75px);
+            transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 50;
+        }
+        .chance-card-animate.active { top: calc(50% - 45px); transform: rotate(360deg); }
+
+        @keyframes popUp {
+            from { transform: scale(0.7); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body>
 
+    <div id="buyModal" class="modal">
+        <div class="modal-content">
+            <div id="modalHeader" class="card-header">ДОКУМЕНТ НА ПРАВО СОБСТВЕННОСТИ</div>
+            <h3 id="modalTitle">Улица</h3>
+            <p id="modalPrice">Цена: $---</p>
+            <p style="font-size: 11px; color: #7f8c8d;">Вы хотите приобрести этот участок?</p>
+            <button class="btn-buy" onclick="confirmBuy()">Купить 🏠</button>
+            <button style="background:#747d8c; color:white;" onclick="closeModal()">Пропустить</button>
+        </div>
+    </div>
+
     <div id="game-container">
         <div id="board">
-            <!-- Центр поля -->
             <div class="center-space">
-                <h1 style="margin: 0; letter-spacing: 4px; color: #e74c3c;">MONOPOLY</h1>
-                <p style="font-size: 12px; color: #7f8c8d;">Сетевой Движок v1.0</p>
+                <h1 style="margin: 0; letter-spacing: 4px; color: #e74c3c; font-size: 42px;">MONOPOLY</h1>
+                <div id="chanceCardAnim" class="chance-card-animate">ШАНС</div>
             </div>
+            <div id="dynamic-tokens"></div>
         </div>
     </div>
 
     <div id="ui-panel">
         <h2>Управление</h2>
-        <input type="text" id="nameInput" placeholder="Имя игрока" style="width:90%; padding:8px; margin-bottom:10px;">
-        <button onclick="joinGame()" style="background:#ffa502;">Подключиться</button>
-        <hr>
+        <input type="text" id="nameInput" placeholder="Имя игрока" style="width:92%; padding:8px; margin-bottom:10px; border-radius:4px; border:none;">
+        <button onclick="joinGame()" style="background:#ffa502; color:white;">Подключиться</button>
+        <hr style="border-color: #57606f;">
         <button class="btn-roll" id="rollBtn" onclick="rollDice()" disabled>Бросить кубики 🎲🎲</button>
-        <button class="btn-buy" id="buyBtn" onclick="buyProperty()" disabled>Купить недвижимость 🏠</button>
         
         <h3>Игроки:</h3>
-        <ul id="playersList" style="padding-left:15px;"></ul>
+        <ul id="playersList" style="padding-left:15px; margin: 5px 0;"></ul>
 
         <h3>События игры:</h3>
         <div id="log"></div>
@@ -80,7 +131,7 @@
     <script>
         const socket = io();
         let myId = null;
-        let currentGameState = {};
+        let localPlayers = {};
 
         // Маппинг 40 клеток на сетку 11х11 по периметру
         const gridPositions = [
@@ -90,7 +141,7 @@
             {r:1, c:11},  {r:2, c:11},  {r:3, c:11}, {r:4, c:11}, {r:5, c:11}, {r:6, c:11}, {r:7, c:11}, {r:8, c:11}, {r:9, c:11}, {r:10, c:11}
         ];
 
-        // Рендер полей
+        // Рендер полей карты
         const board = document.getElementById('board');
         BOARD_DATA.forEach((cell, idx) => {
             const cellDiv = document.createElement('div');
@@ -100,10 +151,9 @@
             cellDiv.id = `cell-${idx}`;
             
             cellDiv.innerHTML = `
-                <div style="font-size:8px;">${cell.name}</div>
+                <div style="font-size:8px; line-height:10px;">${cell.name}</div>
                 <div class="owner-tag" id="owner-${idx}"></div>
-                <div style="color:#27ae60;">${cell.price ? '$'+cell.price : ''}</div>
-                <div class="tokens-container" id="tokens-${idx}"></div>
+                <div style="color:#27ae60; font-size:9px;">${cell.price ? '$'+cell.price : ''}</div>
             `;
             board.appendChild(cellDiv);
         });
@@ -114,57 +164,116 @@
             socket.emit('joinGame', document.getElementById('nameInput').value);
         }
         function rollDice() { socket.emit('rollDice'); }
-        function buyProperty() { socket.emit('buyProperty'); }
+        
+        function closeModal() { document.getElementById('buyModal').style.display = 'none'; }
+        function confirmBuy() {
+            socket.emit('buyProperty');
+            closeModal();
+        }
 
-        socket.on('updateGameState', ({ players, currentTurn, cellsOwner, cellsHouses }) => {
-            currentGameState = { players, currentTurn, cellsOwner };
+        // Логика пошаговой анимации движения фишки ячейка за ячейкой
+        function moveTokenSmoothly(playerId, fromPos, toPos, color) {
+            let token = document.getElementById(`token-${playerId}`);
+            if (!token) {
+                token = document.createElement('div');
+                token.className = 'token';
+                token.id = `token-${playerId}`;
+                token.style.backgroundColor = color;
+                document.getElementById('dynamic-tokens').appendChild(token);
+            }
+
+            let currentPos = fromPos;
             
-            // Очистка фишек и владельцев
-            document.querySelectorAll('.tokens-container').forEach(el => el.innerHTML = '');
-            document.querySelectorAll('.owner-tag').forEach(el => el.innerText = '');
+            function step() {
+                if (currentPos === toPos) {
+                    // Прибыли! Проверяем, наш ли ход и нужно ли показать карточку покупки
+                    if (playerId === myId) {
+                        checkLandingMechanics(toPos);
+                    }
+                    return;
+                }
+                currentPos = (currentPos + 1) % 40;
+                
+                // Рассчитываем координаты центра ячейки на экране
+                const cellEl = document.getElementById(`cell-${currentPos}`);
+                const offsetShift = Object.keys(localPlayers).indexOf(playerId) * 4; // Смещение фишек, чтобы не слипались
+                
+                token.style.left = `${cellEl.offsetLeft + 15 + offsetShift}px`;
+                token.style.top = `${cellEl.offsetTop + 35}px`;
 
-            // Отрисовка владельцев клеток
+                setTimeout(step, 220); // Скорость перешагивания ячеек
+            }
+            step();
+        }
+
+        function checkLandingMechanics(pos) {
+            const cell = BOARD_DATA[pos];
+            // Анимация карт Шанса / Казны
+            if (cell.type === 'chance' || cell.type === 'chest') {
+                const cardAnim = document.getElementById('chanceCardAnim');
+                cardAnim.innerText = cell.type === 'chance' ? '🎲 ШАНС: Отправьтесь на СТАРТ!' : '📜 КАЗНА: Налог на доходы!';
+                cardAnim.style.background = cell.type === 'chance' ? '#e67e22' : '#9b59b6';
+                cardAnim.classList.add('active');
+                setTimeout(() => cardAnim.classList.remove('active'), 3500);
+            }
+
+            // Появление карточки собственности для покупки
+            if (['property', 'railroad', 'utility'].includes(cell.type)) {
+                socket.once('updateGameState', (state) => {
+                    const hasOwner = state.cellsOwner[pos];
+                    if (!hasOwner && state.players[myId].money >= cell.price) {
+                        const colors = { 'brown':'#8B4513', 'light-blue':'#87CEEB', 'pink':'#FF69B4', 'orange':'#FFA500', 'red':'#FF0000', 'yellow':'#FFFF00', 'green':'#008000', 'dark-blue':'#00008B' };
+                        document.getElementById('modalHeader').style.backgroundColor = colors[cell.group] || '#34495e';
+                        document.getElementById('modalTitle').innerText = cell.name;
+                        document.getElementById('modalPrice').innerText = `Стоимость: $${cell.price}`;
+                        document.getElementById('buyModal').style.display = 'flex';
+                    }
+                });
+            }
+        }
+
+        socket.on('updateGameState', ({ players, currentTurn, cellsOwner }) => {
+            localPlayers = players;
+
+            // Обновление владельцев
+            document.querySelectorAll('.owner-tag').forEach(el => el.innerText = '');
             Object.keys(cellsOwner).forEach(cellId => {
                 const owner = players[cellsOwner[cellId]];
                 if (owner) {
-                    document.getElementById(`owner-${cellId}`).innerText = owner.name;
-                    document.getElementById(`owner-${cellId}`).style.color = owner.color;
+                    const tag = document.getElementById(`owner-${cellId}`);
+                    tag.innerText = `[${owner.name}]`;
+                    tag.style.color = owner.color;
                 }
             });
 
-            // Отрисовка фишек игроков и списка
+            // Обновление UI списка игроков
             const pList = document.getElementById('playersList');
             pList.innerHTML = '';
             
             Object.values(players).forEach(p => {
-                const tokenContainer = document.getElementById(`tokens-${p.position}`);
-                if (tokenContainer) {
-                    const t = document.createElement('div');
-                    t.className = 'token';
-                    t.style.backgroundColor = p.color;
-                    tokenContainer.appendChild(t);
-                }
-
                 const li = document.createElement('li');
                 li.style.color = p.color;
-                li.innerHTML = `<b>${p.name}</b>: $${p.money} ${p.inJail ? '(В тюрьме)' : ''}`;
+                li.innerHTML = `<b>${p.name}</b>: $${p.money} ${p.inJail ? '🔒' : ''}`;
                 if (p.id === currentTurn) li.innerHTML += ' 🎲';
                 pList.appendChild(li);
+
+                // Если фишки еще нет на поле, ставим её на стартовую позицию без анимации
+                const tEl = document.getElementById(`token-${p.id}`);
+                if (!tEl) {
+                    moveTokenSmoothly(p.id, p.position, p.position, p.color);
+                }
             });
 
-            // Кнопки управления
-            const isMyTurn = (myId === currentTurn);
-            document.getElementById('rollBtn').disabled = !isMyTurn;
-            
-            // Проверка, можно ли купить текущую клетку
-            if (isMyTurn) {
-                const myPos = players[myId].position;
-                const curCell = BOARD_DATA[myPos];
-                const hasOwner = cellsOwner[myPos];
-                const buyable = ['property', 'railroad', 'utility'].includes(curCell.type);
-                document.getElementById('buyBtn').disabled = !(buyable && !hasOwner && players[myId].money >= curCell.price);
-            } else {
-                document.getElementById('buyBtn').disabled = true;
+            document.getElementById('rollBtn').disabled = (myId !== currentTurn);
+        });
+
+        // Слушаем кубики, чтобы запустить красивую пошаговую анимацию перемещения
+        socket.on('diceRolled', ({ playerId, dice, newPosition }) => {
+            const player = localPlayers[playerId];
+            if (player) {
+                // Высчитываем старую позицию до шага
+                const oldPosition = (newPosition - dice + 40) % 40;
+                moveTokenSmoothly(playerId, oldPosition, newPosition, player.color);
             }
         });
 
